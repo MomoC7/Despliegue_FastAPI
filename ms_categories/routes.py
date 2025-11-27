@@ -15,10 +15,10 @@ get_db = database.get_db
 
 @router.get("/", response_model=List[schemas.CategoryResponse])
 def list_categories(
-        db: Session = Depends(get_db),
-        current_user: dict = Depends(dependencies.get_current_user)
         skip: int = 0,
         limit: int = 100,
+        db: Session = Depends(get_db),
+        current_user: dict = Depends(dependencies.get_current_user)
 ):
     return db.query(models.Category).offset(skip).limit(limit).all()
 
