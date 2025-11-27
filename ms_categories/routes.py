@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from . import dependencies
 from auth_service.dependencies import admin_required
 from .database import get_db
 from .models import Category
@@ -84,3 +85,10 @@ def delete_category(
     db.commit()
     # 204: sin cuerpo de respuesta
     return
+
+router = APIRouter()
+
+@router.get("/")
+def read_categories(current_user = Depends(dependencies.get_current_user)):
+    # ... tu lógica existente ...
+    return [{"id": 1, "name": "Example"}]

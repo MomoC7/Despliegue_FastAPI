@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from . import dependencies
 from auth_service.dependencies import admin_required
 from .database import get_db
 from .models import PointOfSale
@@ -80,3 +81,8 @@ def delete_point(pos_id: int, db: Session = Depends(get_db)):
     db.delete(db_pos)
     db.commit()
     return
+
+@router.get("/")
+def read_point(current_user = Depends(dependencies.get_current_user)):
+    # ... tu lógica existente ...
+    return [{"id": 1, "name": "Example"}]
