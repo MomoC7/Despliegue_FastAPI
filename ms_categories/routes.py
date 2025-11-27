@@ -8,7 +8,6 @@ router = APIRouter(
     tags=["categories"]
 )
 
-# Dependencia para obtener DB
 get_db = database.get_db
 
 
@@ -19,10 +18,9 @@ def list_categories(
         skip: int = 0,
         limit: int = 100,
         db: Session = Depends(get_db),
-        current_user: dict = Depends(dependencies.get_current_user)  # Protegido con token
+        current_user: dict = Depends(dependencies.get_current_user)
 ):
-    categories = db.query(models.Category).offset(skip).limit(limit).all()
-    return categories
+    return db.query(models.Category).offset(skip).limit(limit).all()
 
 
 @router.post(
@@ -35,13 +33,9 @@ def create_category(
         db: Session = Depends(get_db),
         current_user: dict = Depends(dependencies.get_current_user)
 ):
-    # Validar si existe
     existing = db.query(models.Category).filter(models.Category.name == cat.name).first()
     if existing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="La categoría ya existe"
-        )
+        raise HTTPException(status_code=400, detail="La categoría ya existe")
 
     new_cat = models.Category(name=cat.name)
     db.add(new_cat)
@@ -58,17 +52,11 @@ def get_category(
 ):
     db_cat = db.query(models.Category).filter(models.Category.id == cat_id).first()
     if not db_cat:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Categoría no encontrada"
-        )
+        raise HTTPException(status_code=404, detail="Categoría no encontrada")
     return db_cat
 
 
-@router.put(
-    "/{cat_id}",
-    response_model=schemas.CategoryResponse
-)
+@router.put("/{cat_id}", response_model=schemas.CategoryResponse)
 def update_category(
         cat_id: int,
         cat: schemas.CategoryUpdate,
@@ -77,12 +65,8 @@ def update_category(
 ):
     db_cat = db.query(models.Category).filter(models.Category.id == cat_id).first()
     if not db_cat:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Categoría no encontrada"
-        )
+        raise HTTPException(status_code=404, detail="Categoría no encontrada")
 
-    # Actualizar campos
     if cat.name is not None:
         db_cat.name = cat.name
 
@@ -91,10 +75,7 @@ def update_category(
     return db_cat
 
 
-@router.delete(
-    "/{cat_id}",
-    status_code=status.HTTP_204_NO_CONTENT
-)
+@router.delete("/{cat_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_category(
         cat_id: int,
         db: Session = Depends(get_db),
@@ -102,10 +83,7 @@ def delete_category(
 ):
     db_cat = db.query(models.Category).filter(models.Category.id == cat_id).first()
     if not db_cat:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Categoría no encontrada"
-        )
+        raise HTTPException(status_code=404, detail="Categoría no encontrada")
 
     db.delete(db_cat)
     db.commit()
