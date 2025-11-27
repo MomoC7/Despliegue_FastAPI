@@ -1,65 +1,91 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from . import dependencies
-from auth_service.dependencies import admin_required
-from .database import get_db
-from .models import Category
-from .schemas import CategoryCreate, CategoryUpdate, CategoryResponse
+from typing import List
+from . import dependencies, schemas, models, database
 
 router = APIRouter(
     prefix="/api/categories",
     tags=["categories"]
 )
 
+# Dependencia para obtener DB
+get_db = database.get_db
 
-@router.get("", response_model=list[CategoryResponse])
-def list_categories(db: Session = Depends(get_db)):
-    categories = db.query(Category).all()
+
+# --- CRUD ---
+
+@router.get("/", response_model=List[schemas.CategoryResponse])
+def list_categories(
+        skip: int = 0,
+        limit: int = 100,
+        db: Session = Depends(get_db),
+        current_user: dict = Depends(dependencies.get_current_user)  # Protegido con token
+):
+    categories = db.query(models.Category).offset(skip).limit(limit).all()
     return categories
 
 
 @router.post(
-    "",
-    response_model=CategoryResponse,
-    status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(admin_required)]
+    "/",
+    response_model=schemas.CategoryResponse,
+    status_code=status.HTTP_201_CREATED
 )
 def create_category(
-    cat: CategoryCreate,
-    db: Session = Depends(get_db),
+        cat: schemas.CategoryCreate,
+        db: Session = Depends(get_db),
+        current_user: dict = Depends(dependencies.get_current_user)
 ):
-    existing = db.query(Category).filter(Category.name == cat.name).first()
+    # Validar si existe
+    existing = db.query(models.Category).filter(models.Category.name == cat.name).first()
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="La categoría ya existe"
         )
 
-    new_cat = Category(name=cat.name)
+    new_cat = models.Category(name=cat.name)
     db.add(new_cat)
     db.commit()
     db.refresh(new_cat)
     return new_cat
 
 
+@router.get("/{cat_id}", response_model=schemas.CategoryResponse)
+def get_category(
+        cat_id: int,
+        db: Session = Depends(get_db),
+        current_user: dict = Depends(dependencies.get_current_user)
+):
+    db_cat = db.query(models.Category).filter(models.Category.id == cat_id).first()
+    if not db_cat:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Categoría no encontrada"
+        )
+    return db_cat
+
+
 @router.put(
     "/{cat_id}",
-    response_model=CategoryResponse,
-    dependencies=[Depends(admin_required)]
+    response_model=schemas.CategoryResponse
 )
 def update_category(
-    cat_id: int,
-    cat: CategoryUpdate,
-    db: Session = Depends(get_db),
+        cat_id: int,
+        cat: schemas.CategoryUpdate,
+        db: Session = Depends(get_db),
+        current_user: dict = Depends(dependencies.get_current_user)
 ):
-    db_cat = db.query(Category).filter(Category.id == cat_id).first()
+    db_cat = db.query(models.Category).filter(models.Category.id == cat_id).first()
     if not db_cat:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Categoría no encontrada"
         )
 
-    db_cat.name = cat.name
+    # Actualizar campos
+    if cat.name is not None:
+        db_cat.name = cat.name
+
     db.commit()
     db.refresh(db_cat)
     return db_cat
@@ -67,14 +93,14 @@ def update_category(
 
 @router.delete(
     "/{cat_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(admin_required)]
+    status_code=status.HTTP_204_NO_CONTENT
 )
 def delete_category(
-    cat_id: int,
-    db: Session = Depends(get_db),
+        cat_id: int,
+        db: Session = Depends(get_db),
+        current_user: dict = Depends(dependencies.get_current_user)
 ):
-    db_cat = db.query(Category).filter(Category.id == cat_id).first()
+    db_cat = db.query(models.Category).filter(models.Category.id == cat_id).first()
     if not db_cat:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -83,12 +109,4 @@ def delete_category(
 
     db.delete(db_cat)
     db.commit()
-    # 204: sin cuerpo de respuesta
     return
-
-router = APIRouter()
-
-@router.get("/")
-def read_categories(current_user = Depends(dependencies.get_current_user)):
-    # ... tu lógica existente ...
-    return [{"id": 1, "name": "Example"}]
