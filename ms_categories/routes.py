@@ -18,7 +18,6 @@ def list_categories(
         skip: int = 0,
         limit: int = 100,
         db: Session = Depends(get_db),
-        current_user: dict = Depends(dependencies.get_current_user)
 ):
     return db.query(models.Category).offset(skip).limit(limit).all()
 
